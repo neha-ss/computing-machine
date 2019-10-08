@@ -1,0 +1,310 @@
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.numeric_std.all;
+use IEEE.std_logic_unsigned.all;
+
+
+entity sts is
+port(	  CLK_CRY : in  std_logic;         --fpga_clk       
+CLK_DIV : out std_logic;			  -- adc_clk
+ADS1271_DOUT1 : in  std_logic ;   -- ADC_DOUT
+ADS1271_DRDY1 : in  STD_LOGIC ;  
+ADS1271_SYNC : out  STD_LOGIC := '1' ;
+ADS1271_MODE : out  STD_LOGIC := '1' ;
+ADS1271_SCLK : out std_logic;
+-- ADC_DIN : out std_logic; --USED IN DAISY CHAINING
+MP_RST : in std_logic;  --INDICATING_PIN
+GPIO_OUT : OUT STD_LOGIC_VECTOR(13 DOWNTO 0); --LED_OUT(8)
+GPIO_IN : IN STD_LOGIC_VECTOR(13 DOWNTO 0);
+		DAC_SCLK,DAC_CLK : out  STD_LOGIC;
+		DAC_SDIO : inout std_logic
+);
+
+end sts;
+
+architecture Behavioral of sts is
+
+signal ADS1271_DATA_SIGNAL,PRE_ADS1271_DRDY1 : std_logic := '0';     --ADS1271_DOUT SIGNAL
+signal adc_count : integer range 0 to 24 := 0;
+signal adc_cntr : integer range 0 to 2400000 := 0 ;
+--signal wr_adc_count : std_logic_vector(6 downto 0) := "0000000";   -- GENERATING SCLK
+signal adc_wr_count : std_logic_vector(10 downto 0) := "00000000000";   -- GENERATING SCLK
+
+signal adc_byte,adc_reg : std_logic_vector(23 downto 0):="000000000000000000000000"; --24 BIT REGISTER
+signal adc_pin1,adc_pin23 : std_logic :='0';
+signal adc_pin2 : std_logic :='0';
+signal adc_pin3,adc_pin4 : std_logic :='0';
+
+signal adc_reg1,adc_reg2,adc_reg3 : std_logic_vector(7 downto 0);
+SIGNAL ADC_CNT : STD_LOGIC_VECTOR(8 DOWNTO 0) := "000000000";
+signal adc_w_count : std_logic;					
+signal dac_count:  std_logic_vector(24 downto 0) := "0000000000000000000000000";
+signal dac_cnt,dac_cot : integer range  0 to 95 := 0;
+signal dac_delay : integer range 0 to 10000 := 0;
+signal pn,pn1,pin : std_logic := '0';
+		signal dac_sclk_cntr : std_logic := '0';
+		signal dac_cmr0 :std_logic_vector(7 downto 0) := "10011100" ;
+		signal dac_cmr1 :std_logic_vector(7 downto 0) := "01101000" ;
+signal dac_reg : std_logic_vector(23 downto 0):="000000000000000000000000"; --24 BIT REGISTER
+		signal dac_insr0: std_logic_vector(7 downto 0) := "00100101" ;
+		signal dac_insr1: std_logic_vector(7 downto 0) := "00100100" ;
+		signal dac_insr : std_logic_vector(7 downto 0) := "00100010" ;
+		signal dac_dir : std_logic_vector(23 downto 0) := "000000000000000000000000";
+			
+begin
+
+
+-----------------------------------------------------------------------------------------------------------
+-------------------------***************ADC_PROGRAM******************---------------------------------
+-----------------------------------------------------------------------------------------------------------
+
+
+
+CLK_DIV <= CLK_CRY;                         -- adc_clk <= fpga_clk
+
+
+
+----GENERATION OF SCLK------
+process(CLK_CRY)   --CHECKING RISING EDGE OF FPGA CLK AND INDICATING PIN TO START CONVERSION   
+begin	
+
+if rising_edge(CLK_CRY ) THEN
+	adc_wr_count <= adc_wr_count + 1;
+
+	if (ADS1271_DRDY1 ='0' and PRE_ADS1271_DRDY1 = '1') THEN --VALID DATA IS OBTAINED
+		adc_wr_count <= "00000000000";
+	else 
+		ADS1271_SCLK <= adc_wr_count(3);
+		adc_w_count <= adc_wr_count(3);
+
+
+			if adc_wr_count >= "00110000000" and adc_wr_count < "001000000000" then
+				ADS1271_SCLK <= '0';
+				adc_w_count <= '0' ;
+
+			END IF;
+
+
+
+	end if;
+end if;
+
+end process;
+
+
+
+process(CLK_CRY)
+begin
+
+if rising_edge(CLK_CRY) then
+PRE_ADS1271_DRDY1 <= ADS1271_DRDY1;
+END IF;
+END PROCESS;
+
+
+------BYTE STORAGE---------
+process(CLK_CRY,adc_w_count)
+begin
+	if adc_w_count = '1' then   -- CHECKING THE falling EDGE OF SCLK
+
+IF RISING_EDGE(CLK_CRY) THEN
+		adc_byte <= adc_byte(22 downto 0) & ADS1271_DOUT1;  
+		adc_count <= adc_count + 1;
+
+	--------STORING AFTER 24BIT CONVERSION---------
+
+	if adc_count = 24  then
+		adc_reg <= adc_byte;
+
+		------REGISTER STORE FOR GPIO_OUT-------
+		adc_reg1 <= adc_reg(23 downto 16);
+		adc_reg2 <= adc_reg(15 downto 8);
+		adc_reg3 <= adc_reg(7 downto 0);
+
+		adc_pin1 <= '1';
+
+		adc_count <= 0;
+	 end if;
+	END IF;
+end if;
+--------porting on the GPIO_OUT-------
+
+
+if falling_edge(adc_w_count) then
+adc_cntr <= adc_cntr + 1;
+end if;
+
+if adc_cntr <= 7 then
+adc_pin2 <= '1';
+GPIO_OUT(7 downto 0) <= adc_reg(23 downto 16);
+end if;
+
+if adc_cntr > 7 and adc_cntr <= 14 then
+adc_pin3 <= '1';
+GPIO_OUT(7 downto 0) <= adc_reg(15 downto 8);
+end if;
+
+if adc_cntr > 14 and adc_cntr <= 24 then
+adc_pin4 <= '1';
+GPIO_OUT(7 downto 0) <= adc_reg(7 downto 0);
+end if;
+
+if adc_cntr > 24 then
+adc_pin1 <= '0';
+adc_pin2 <= '0';
+adc_pin3 <= '0';
+adc_pin4 <= '0';
+adc_cntr <= 0;
+end if;	
+
+end process;
+
+-----------------------------------------------------------------------------------------------------------
+-------------------------***************OFFFSET_NULLIFY_PROGRAM******************-------------------------
+-----------------------------------------------------------------------------------------------------------
+process(CLK_CRY)
+begin
+ if rising_edge(CLK_CRY) then
+ dac_reg <= not (adc_reg) + 1;
+end if;
+end process;
+
+
+
+-----------------------------------------------------------------------------------------------------------
+-------------------------***************DAC_PROGRAM******************----------------------------------------
+-----------------------------------------------------------------------------------------------------------
+process(CLK_CRY) 
+begin
+if rising_edge(CLK_CRY) then
+dac_count<= dac_count+ 1;
+dac_delay <= dac_delay + 1;
+end if;
+DAC_CLK <= dac_count(1);
+DAC_SCLK <= dac_count(4);
+dac_sclk_cntr <= dac_count(4);
+--mp_rst <= dac_count(23);
+
+if dac_delay <= 1000 then
+	DAC_SCLK <= '0';
+	DAC_CLK <= '0';
+	--mp_rst <= '0';
+	elsif dac_delay > 1000 then
+	pn <= '1';
+end if;
+
+end process;
+
+
+process(dac_sclk_cntr)
+begin
+if pn = '1' then
+
+
+	if falling_edge(dac_sclk_cntr) then
+	dac_cnt <= dac_cnt + 1;
+	end if;
+
+
+
+	case dac_cnt is
+	when 1 => DAC_SDIO <= dac_insr0(0);
+	when 2 => DAC_SDIO <= dac_insr0(1);
+	when 3 => DAC_SDIO <= dac_insr0(2);
+	when 4 => DAC_SDIO <= dac_insr0(3);
+	when 5 => DAC_SDIO <= dac_insr0(4);
+	when 6 => DAC_SDIO <= dac_insr0(5);
+	when 7 => DAC_SDIO <= dac_insr0(6);
+	when 8 => DAC_SDIO <= dac_insr0(7);
+
+
+	when  9 => DAC_SDIO <= dac_cmr0(0);
+	when 10 => DAC_SDIO <= dac_cmr0(1);
+	when 11=> DAC_SDIO <= dac_cmr0(2);
+	when 12 => DAC_SDIO <= dac_cmr0(3);
+	when 13 => DAC_SDIO <= dac_cmr0(4);
+	when 14 => DAC_SDIO <= dac_cmr0(5);
+	when 15 => DAC_SDIO <= dac_cmr0(6);
+	when 16 => DAC_SDIO <= dac_cmr0(7);
+
+	-------------------must be removed when testing on hardware-------------
+	--when 17 => DAC_SDIO <= dac_insr1(0);
+	--when 18 => DAC_SDIO <= dac_insr1(1);
+	--when 19 => DAC_SDIO <= dac_insr1(2);
+	--when 20 => DAC_SDIO <= dac_insr1(3);
+	--when 21 => DAC_SDIO <= dac_insr1(4);
+	--when 22 => DAC_SDIO <= dac_insr1(5);
+	--when 23 => DAC_SDIO <= dac_insr1(6);
+	--when 24 => DAC_SDIO <= dac_insr1(7);
+	----------------------------------------------------------------------------
+
+	when 17 => DAC_SDIO <= dac_cmr1(0);
+	when 18 => DAC_SDIO <= dac_cmr1(1);
+	when 19 => DAC_SDIO <= dac_cmr1(2);
+	when 20 => DAC_SDIO <= dac_cmr1(3);
+	when 21 => DAC_SDIO <= dac_cmr1(4);
+	when 22 => DAC_SDIO <= dac_cmr1(5);
+	when 23 => DAC_SDIO <= dac_cmr1(6);
+	when 24 => DAC_SDIO <= dac_cmr1(7);
+
+	----------************insr for dir************---------------
+	--when 25 => DAC_SDIO <= dac_insr(0); 
+	--when 26 => DAC_SDIO <= dac_insr(1);
+	--when 27 => DAC_SDIO <= dac_insr(2);
+	--when 28 => DAC_SDIO <= dac_insr(3);
+	--when 29 => DAC_SDIO <= dac_insr(4);
+	--when 30 => DAC_SDIO <= dac_insr(5);
+	--when 32 => DAC_SDIO <= dac_insr(6);
+	--when 33 => DAC_SDIO <= dac_insr(7);
+
+	dac_dir(7 downto 0) <= dac_reg(7 downto 0);
+
+	when 25 => DAC_SDIO <= dac_dir(0);
+	when 26 => DAC_SDIO <= dac_dir(1);
+	when 27 => DAC_SDIO <= dac_dir(2);
+	when 28 => DAC_SDIO <= dac_dir(3);
+	when 29 => DAC_SDIO <= dac_dir(4);
+	when 30 => DAC_SDIO <= dac_dir(5);
+	when 31 => DAC_SDIO <= dac_dir(6);
+	when 32 => DAC_SDIO <= dac_dir(7);
+
+
+	dac_dir(15 downto 8) <= dac_reg(15 downto 8);
+	when 33 => DAC_SDIO <=  dac_dir(8);
+	when 34 => DAC_SDIO <=  dac_dir(9);
+	when 35 => DAC_SDIO <=  dac_dir(10);
+	when 36 => DAC_SDIO <=  dac_dir(11);
+	when 37 => DAC_SDIO <=  dac_dir(12);
+	when 38 => DAC_SDIO <=  dac_dir(13);
+	when 39 => DAC_SDIO <=  dac_dir(14);
+	when 40 => DAC_SDIO <=  dac_dir(15);
+
+
+	dac_dir(23 downto 16) <= dac_reg(23 downto 16);
+	when 41 => DAC_SDIO <=  dac_dir(16);
+	when 42 => DAC_SDIO <=  dac_dir(17);
+	when 43 => DAC_SDIO <=  dac_dir(18);
+	when 44 => DAC_SDIO <=  dac_dir(19);
+	when 45 => DAC_SDIO <=  dac_dir(20);
+	when 46 => DAC_SDIO <=  dac_dir(21);
+	when 47 => DAC_SDIO <=  dac_dir(22);
+	when 48 => DAC_SDIO <=  dac_dir(23);
+	pn1 <= '1';
+
+	when 80 => pin <= '1';
+	dac_cnt <= 25;
+
+
+
+	when others => pin <= '0';
+
+	end case;
+
+end if;
+end process;
+
+
+
+
+end Behavioral;
