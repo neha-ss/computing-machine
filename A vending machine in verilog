@@ -1,0 +1,85 @@
+module vending_machine(nw_pa,clk,coin,rst,coke,coffee,biscuit,select_coke,select_coffee,select_biscuit,nw_coins,
+coin5,coin10,coin15); //outputting remaining coins
+output coin5= 1'b0, coin10 = 1'b0,coin15 = 1'b0;
+output nw_pa,nw_coins;
+input [1:0] coin;
+input select_coke,select_coffee,select_biscuit;
+input clk,rst;
+output [1:0] coke = 1'b0,coffee = 1'b0,biscuit = 1'b0;
+reg [1:0] state;
+output return_money;
+reg [1:0] next_state;
+reg nw_pa;
+reg [1:0]coke = 1'b1,coffee = 1'b1,biscuit = 1'b1;
+parameter [1:0] s0=2'b00;
+parameter [1:0] s5=2'b01;
+parameter [1:0] s10=2'b10;
+parameter [1:0] s15=2'b11;
+always @(posedge clk)
+begin
+if (rst)
+state=s0;
+else
+state=next_state;
+end
+always @(state or coin)
+begin
+case (state)
+s0:
+begin
+if (coin==2'b00)
+next_state=s0;
+else
+if (coin==2'b01)
+next_state=s5;
+else
+if (coin==2'b10)
+next_state=s10;
+end
+s5:
+begin
+if (coin==2'b00)
+next_state=s5;
+else
+if (coin==2'b01)
+next_state=s10;
+else
+if (coin==2'b10)
+next_state=s15;
+end
+s10:
+begin
+if (coin==2'b00)
+next_state=s10;
+else
+if (coin==2'b01)
+next_state=s15;
+else
+if (coin==2'b10)
+next_state=s15;
+end
+s15:
+begin
+next_state=s0;
+end
+default : next_state=s0;
+endcase // case (state)
+end // always @ (state,next_state)
+always @(state)
+begin
+case (state)
+s0 : if(select_coke==1'b1 || select_coffee==1'b1 || select_biscuit==1'b1)
+nw_pa<=1'b0;
+else
+nw_pa<=1'b0;
+s5 : if(select_coke==1'b0 && select_coffee==1'b0 && select_biscuit==1'b1)
+nw_pa <= 1'b1;
+biscuit <=1'b1;
+if(select_coke==1'b1 || select_coffee==1'b1)
+$display()
+s10: nw_pa<= select_coffee;
+s15: nw_pa<= coke;
+default: nw_pa<=1'b0;
+endcase // case (state)
+end
+endmodule
