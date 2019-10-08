@@ -1,0 +1,255 @@
+-DAC logic
+process(RESET,CLK_DIV)
+begin
+	if reset = '0' then
+		wr_counter_1 <= 0; 
+		LDAC <= '1'; 
+	   DAC_SDI <= '0';
+		DAC_SCLK <= '0';
+		DAC_CS <= '1';
+		GP10 <= '1';
+								
+	elsiffalling_edge(CLK_DIV) then
+					ifdac_write_start = '0' then
+						
+						wr_counter_1 <= wr_counter_1 + 1;
+						
+						case wr_counter_1 is
+						
+						when 0 => --defalt signals
+									 DAC_CS <= '0';
+DAC_SCLK <= '0';
+									 DAC_SDI <= '0';
+									 GP10 <= '0';
+						
+						--data starts							
+						when 1 => ---------------------16th bit
+									if(dac_data(15)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+									
+						when 2 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 3 => --clock end
+									 DAC_SCLK <= '0';			
+						
+						when 4 => --------------------15th bit
+									if(dac_data(14)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 5 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 6 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 7 => ---------------------14th bit
+									if(dac_data(13)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																																				
+						when 8 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 9 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 10 => ---------------------13th bit
+									if(dac_data(12)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 11 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 12 => --clock end
+									 DAC_SCLK <= '0';
+									
+						when 13 => -----------------------12th bit
+									if(dac_data(11)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 14 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 15 => --clock end
+									 DAC_SCLK <= '0';
+									
+						when 16 => ---------------------------11th bit
+									if(dac_data(10)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 17 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 18 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 19 => ---------------------------10th bit
+									if(dac_data(9)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 20 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 21 => --clock end
+									 DAC_SCLK <= '0';
+									
+						when 22 => -----------------------------9th bit
+									if(dac_data(8)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 23 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 24 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 25 => -----------------------------8th bit
+									if(dac_data(7)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 26 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 27 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 28 => -----------------------------7th bit
+									if(dac_data(6)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 29 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 30 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 31 => --------------------------------6th bit
+									if(dac_data(5)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 32 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 33 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 34 => ----------------------------------5th bit
+									if(dac_data(4)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 35 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 36 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 37 => ---------------------------------4th bit
+									if(dac_data(3)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 38 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 39 => --clock end
+									 DAC_SCLK <= '0';
+						
+						when 40 => ----------------------------------3th bit
+									if(dac_data(2)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 41 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 42 => --clock end
+									 DAC_SCLK <= '0';
+									
+						when 43 => -----------------------------------2th bit
+									if(dac_data(1)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 44 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 45 => --clock end
+									 DAC_SCLK <= '0';
+									
+						when 46 => -----------------------------------1th bit
+									if(dac_data(0)='1')then
+										 DAC_SDI <= '1';
+									else
+										 DAC_SDI <= '0';
+									end if; 
+																											
+						when 47 => --clock start
+									 DAC_SCLK <= '1';
+									
+						when 48 => --clock end
+									 DAC_SCLK <= '0';
+						--data ends
+						
+						when 49 => --disable Chip select
+									 DAC_CS <= '1';
+									
+						when 50 => --load DAC
+									 LDAC <= '0';
+									
+						when 51 => --load DAC
+									 LDAC <= '1';
+									 GP10 <= '1';			
+						
+						when 52 => --ram adress decrement
+							      wr_counter_1 <= 52;
+												
+						when others =>	
+									wr_counter_1 <= 0;
+						end case;
+				end if;
+				
+	end if;					
+end process;	
+
